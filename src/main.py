@@ -16,6 +16,7 @@ if __name__ == "__main__":
         Play(name="Install (some) Dependencies", hosts="localhost", become=True)
         .add_apt("install pipx", "pipx", update_cache="yes")
         .add_apt("install ntpdate", "ntpsec-ntpdate", update_cache="yes")
+        .add_apt("install sshpass", "sshpass", update_cache="yes")
     )
 
     tools_git = [
@@ -51,8 +52,6 @@ if __name__ == "__main__":
         .mass_clone(
             tools_dir,
             tools_git,
-            owner="kali",
-            group="kali",
         )
         .mass_wget(
             tools_dir_standalone,
@@ -121,10 +120,10 @@ curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.l
         .add_apt("install wg-tools", "wireguard-tools", update_cache="yes")
     )
 
-    # plays.append(fetch_tools)
-    # plays.append(install_deps)
-    # plays.append(install_vscode)
-    # plays.append(install_tailscale)
+    plays.append(fetch_tools)
+    plays.append(install_deps)
+    plays.append(install_vscode)
+    plays.append(install_tailscale)
     plays.append(install_wireguard)
 
     playbook = yaml.safe_dump(

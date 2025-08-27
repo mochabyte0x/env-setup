@@ -127,8 +127,6 @@ class Play:
         self,
         base_dest: str,
         repos: List[str],
-        owner: Optional[str] = None,
-        group: Optional[str] = None,
         register: Optional[str] = None,
         when: Optional[Condition] = None,
     ) -> "Play":
@@ -139,8 +137,6 @@ class Play:
                 f"Clone {repo_name}",
                 repo,
                 dest,
-                owner=owner,
-                group=group,
                 register=register,
                 when=when,
             )
