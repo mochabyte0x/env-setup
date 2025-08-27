@@ -85,9 +85,40 @@ if __name__ == "__main__":
         )
     )
 
+    # refer to this if you hate the rust syntax
+    install_tailscale = Play(name="Install Tailscale", hosts="localhost", become=True)
+
+    install_tailscale.stat(
+        "Check if Tailscale is installed", "/usr/bin/tailscale", "tailscale_stat"
+    )
+
+    install_tailscale.sh(
+        task_name="Add GPG Keys",
+        cmd="""
+curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
+curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.list | sudo tee /etc/apt/sources.list.d/tailscale.list
+        """,
+        when="tailscale_stat.stat.exists == false",
+    )
+
+    install_tailscale.add_apt(
+        task_name="Install Tailscale",
+        pkg="tailscale",
+        update_cache="yes",
+        when="tailscale_stat.stat.exists == false",
+    )
+
+    install_tailscale.systemd_service(
+        task_name="Enable and Start Tailscale",
+        name="tailscaled",
+        state="started",
+        enabled=True,
+    )
+
     plays.append(install_packages)
     plays.append(fetch_tools)
     plays.append(install_vscode)
+    plays.append(install_tailscale)
 
     playbook = yaml.safe_dump(
         [play.to_dict() for play in plays],

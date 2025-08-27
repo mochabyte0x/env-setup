@@ -5,6 +5,16 @@ from pathlib import Path
 
 import yaml
 
+
+def str_representer(dumper: yaml.Dumper, data: str) -> yaml.nodes.ScalarNode:
+    style = "|" if "\n" in data else None
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data, style=style)  # type: ignore
+
+
+yaml.SafeDumper.add_representer(
+    str, str_representer
+)  # pyright: ignore[reportArgumentType]
+
 Condition = Union[str, List[str]]
 
 modules = {
@@ -12,6 +22,7 @@ modules = {
     "file": "ansible.builtin.file",
     "git": "ansible.builtin.git",
     "shell": "ansible.builtin.shell",
+    "systemd": "ansible.builtin.systemd_service",
     "stat": "ansible.builtin.stat",
     "powershell": "ansible.windows.win_powershell",
     "win_powershell": "ansible.windows.win_powershell",
@@ -65,6 +76,13 @@ class Play:
         params = {"name": pkg}
         params.update(kwargs)
         return self.add_task(task_name, modules["apt"], **params)
+
+    def systemd_service(
+        self,
+        task_name: str,
+        **kwargs: Any,
+    ):
+        return self.add_task(task_name, modules["systemd"], **kwargs)
 
     def create_directory(
         self,
@@ -156,10 +174,17 @@ class Play:
         task_name: str,
         cmd: str,
         register: Optional[str] = None,
-        when: Optional[Condition] = None,
+        when: Optional[str] = None,
     ) -> "Play":
+
+        cmd = cmd.strip()
+
         return self.add_task(
-            task_name, modules["shell"], cmd=cmd, register=register, when=when
+            task_name,
+            modules["shell"],
+            cmd=cmd,
+            register=register,
+            when=when,
         )
 
     def mass_wget(

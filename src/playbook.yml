@@ -1,23 +1,24 @@
-- name: Install VSCode
+- name: Install Tailscale
   hosts: localhost
   become: true
   tasks:
-  - name: Check if VSCode is installed
+  - name: Check if Tailscale is installed
     ansible.builtin.stat:
-      path: /usr/bin/code
-    register: vscode_stat
-  - name: Check if VSCode deb is downloaded
-    ansible.builtin.stat:
-      path: /tmp/code.deb
-    register: vscode_deb_stat
-  - name: Download VSCode Debian Package
-    ansible.builtin.get_url:
-      url: https://vscode.download.prss.microsoft.com/dbazure/download/stable/6f17636121051a53c88d3e605c491d22af2ba755/code_1.103.2-1755709794_amd64.deb
-      dest: /tmp/code.deb
-      owner: null
-      group: null
-    register: vscode_deb
-    when: vscode_stat.stat.exists == False and vscode_deb_stat.stat.exists == False
-  - name: Install VSCode
+      path: /usr/bin/tailscale
+    register: tailscale_stat
+  - name: Add GPG Keys
     ansible.builtin.shell:
-      cmd: dpkg -i /tmp/code.deb
+      cmd: |-
+        curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
+        curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.list | sudo tee /etc/apt/sources.list.d/tailscale.list
+    when: tailscale_stat.stat.exists == false
+  - name: Install Tailscale
+    ansible.builtin.apt:
+      name: tailscale
+      update_cache: 'yes'
+    when: tailscale_stat.stat.exists == false
+  - name: Enable and Start Tailscale
+    ansible.builtin.systemd_service:
+      name: tailscaled
+      state: started
+      enabled: true
