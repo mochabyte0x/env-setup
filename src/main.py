@@ -17,6 +17,7 @@ if __name__ == "__main__":
         .add_apt("install pipx", "pipx", update_cache="yes")
         .add_apt("install ntpdate", "ntpsec-ntpdate", update_cache="yes")
         .add_apt("install sshpass", "sshpass", update_cache="yes")
+        .add_apt("install gh", "gh", update_cache="yes")
     )
 
     tools_git = [
