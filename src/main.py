@@ -121,11 +121,19 @@ curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.l
         .add_apt("install wg-tools", "wireguard-tools", update_cache="yes")
     )
 
-    plays.append(fetch_tools)
-    plays.append(install_deps)
-    plays.append(install_vscode)
-    plays.append(install_tailscale)
-    plays.append(install_wireguard)
+    install_fonts = (
+        Play(name="Install Fonts", hosts="localhost", become=True)
+        .wget("fetch jb-mono", "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/JetBrainsMono.zip", dest="/tmp/JetBrainsMono.zip")
+        .sh("unzip jb-mono", "unzip /tmp/JetBrainsMono.zip -d /usr/share/fonts/truetype/jb-mono")
+        .sh("fc-cache", "fc-cache -fv")
+    )
+
+    # plays.append(fetch_tools)
+    # plays.append(install_deps)
+    # plays.append(install_vscode)
+    # plays.append(install_tailscale)
+    # plays.append(install_wireguard)
+    plays.append(install_fonts)
 
     playbook = yaml.safe_dump(
         [play.to_dict() for play in plays],
