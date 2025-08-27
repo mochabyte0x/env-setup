@@ -12,8 +12,8 @@ if __name__ == "__main__":
 
     plays: list[Play] = []
 
-    install_packages = (
-        Play(name="Install Packages", hosts="localhost", become=True)
+    install_deps = (
+        Play(name="Install (some) Dependencies", hosts="localhost", become=True)
         .add_apt("install pipx", "pipx", update_cache="yes")
         .add_apt("install ntpdate", "ntpsec-ntpdate", update_cache="yes")
     )
@@ -115,10 +115,17 @@ curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.l
         enabled=True,
     )
 
-    plays.append(install_packages)
-    plays.append(fetch_tools)
-    plays.append(install_vscode)
-    plays.append(install_tailscale)
+    install_wireguard = (
+        Play(name="Install Wireguard", hosts="localhost", become=True)
+        .add_apt("install wireguard", "wireguard", update_cache="yes")
+        .add_apt("install wg-tools", "wireguard-tools", update_cache="yes")
+    )
+
+    # plays.append(fetch_tools)
+    # plays.append(install_deps)
+    # plays.append(install_vscode)
+    # plays.append(install_tailscale)
+    plays.append(install_wireguard)
 
     playbook = yaml.safe_dump(
         [play.to_dict() for play in plays],

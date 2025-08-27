@@ -11,9 +11,7 @@ def str_representer(dumper: yaml.Dumper, data: str) -> yaml.nodes.ScalarNode:
     return dumper.represent_scalar("tag:yaml.org,2002:str", data, style=style)  # type: ignore
 
 
-yaml.SafeDumper.add_representer(
-    str, str_representer
-)  # pyright: ignore[reportArgumentType]
+yaml.SafeDumper.add_representer(str, str_representer)  # type: ignore
 
 Condition = Union[str, List[str]]
 

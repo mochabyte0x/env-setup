@@ -1,24 +1,12 @@
-- name: Install Tailscale
+- name: Install Wireguard
   hosts: localhost
   become: true
   tasks:
-  - name: Check if Tailscale is installed
-    ansible.builtin.stat:
-      path: /usr/bin/tailscale
-    register: tailscale_stat
-  - name: Add GPG Keys
-    ansible.builtin.shell:
-      cmd: |-
-        curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
-        curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.list | sudo tee /etc/apt/sources.list.d/tailscale.list
-    when: tailscale_stat.stat.exists == false
-  - name: Install Tailscale
+  - name: install wireguard
     ansible.builtin.apt:
-      name: tailscale
+      name: wireguard
       update_cache: 'yes'
-    when: tailscale_stat.stat.exists == false
-  - name: Enable and Start Tailscale
-    ansible.builtin.systemd_service:
-      name: tailscaled
-      state: started
-      enabled: true
+  - name: install wg-tools
+    ansible.builtin.apt:
+      name: wireguard-tools
+      update_cache: 'yes'
