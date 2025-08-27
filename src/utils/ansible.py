@@ -130,6 +130,38 @@ class Play:
             )
         return self
 
+    def wget(
+        self,
+        task_name: str,
+        url: str,
+        dest: str,
+        owner: Optional[str] = None,
+        group: Optional[str] = None,
+        register: Optional[str] = None,
+        when: Optional[Condition] = None,
+    ) -> "Play":
+        return self.add_task(
+            task_name,
+            "ansible.builtin.get_url",
+            url=url,
+            dest=dest,
+            owner=owner if owner else None,
+            group=group if group else None,
+            register=register,
+            when=when,
+        )
+
+    def sh(
+        self,
+        task_name: str,
+        cmd: str,
+        register: Optional[str] = None,
+        when: Optional[Condition] = None,
+    ) -> "Play":
+        return self.add_task(
+            task_name, modules["shell"], cmd=cmd, register=register, when=when
+        )
+
     def mass_wget(
         self,
         base_dest: str,

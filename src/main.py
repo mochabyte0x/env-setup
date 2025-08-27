@@ -62,8 +62,32 @@ if __name__ == "__main__":
         )
     )
 
+    install_vscode = (
+        Play(name="Install VSCode", hosts="localhost", become=True)
+        .stat("Check if VSCode is installed", "/usr/bin/code", "vscode_stat")
+        .stat(
+            "Check if VSCode deb is downloaded",
+            "/tmp/code.deb",
+            "vscode_deb_stat",
+        )
+        .wget(
+            "Download VSCode Debian Package",
+            # grab latest with:
+            # curl 'https://update.code.visualstudio.com/latest/linux-deb-x64/stable'
+            "https://vscode.download.prss.microsoft.com/dbazure/download/stable/6f17636121051a53c88d3e605c491d22af2ba755/code_1.103.2-1755709794_amd64.deb",
+            dest="/tmp/code.deb",
+            register="vscode_deb",
+            when="vscode_stat.stat.exists == False and vscode_deb_stat.stat.exists == False",
+        )
+        .sh(
+            "Install VSCode",
+            "dpkg -i /tmp/code.deb",
+        )
+    )
+
     plays.append(install_packages)
     plays.append(fetch_tools)
+    plays.append(install_vscode)
 
     playbook = yaml.safe_dump(
         [play.to_dict() for play in plays],
