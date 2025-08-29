@@ -129,6 +129,8 @@ class Play:
         repos: List[str],
         register: Optional[str] = None,
         when: Optional[Condition] = None,
+        owner: Optional[str] = None,
+        group: Optional[str] = None,
     ) -> "Play":
         for repo in repos:
             repo_name = repo.split("/")[-1].replace(".git", "")

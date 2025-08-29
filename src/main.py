@@ -53,12 +53,31 @@ if __name__ == "__main__":
         .mass_clone(
             tools_dir,
             tools_git,
+            owner="kali",
+            group="kali",
         )
         .mass_wget(
             tools_dir_standalone,
             tools_standalone,
             owner="kali",
             group="kali",
+        )
+    )
+
+    install_tools = (
+        Play(name="Install Tools", hosts="localhost", become=False) # run as normal user
+        .ensure_directory(tools_dir, owner="kali", group="kali")
+        .ensure_directory(tools_dir_standalone, owner="kali", group="kali")
+        .sh(
+            task_name="pipx install tools",
+            cmd=f"""
+for d in {tools_dir}/*/; do
+    if [ -f "$d/setup.py" ] || [ -f "$d/pyproject.toml" ]; then
+        echo "Installing $d with pipx"
+        pipx install "$d"
+    fi
+done
+"""
         )
     )
 
@@ -128,12 +147,20 @@ curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.l
         .sh("fc-cache", "fc-cache -fv")
     )
 
-    # plays.append(fetch_tools)
-    # plays.append(install_deps)
-    # plays.append(install_vscode)
-    # plays.append(install_tailscale)
-    # plays.append(install_wireguard)
+    misc_stuff_lmao = (
+        Play(name="Misc Stuff", hosts="localhost", become=True)
+        .stat("Check if rockyou is gz'ed", "/usr/share/wordlists/rockyou.txt.gz", "rockyou_stat")
+        .sh("gunzip rockyou", "gunzip /usr/share/wordlists/rockyou.txt.gz", when="rockyou_stat.stat.exists == true")
+    )
+
+    plays.append(fetch_tools)
+    plays.append(install_tools)
+    plays.append(install_deps)
+    plays.append(install_vscode)
+    plays.append(install_tailscale)
+    plays.append(install_wireguard)
     plays.append(install_fonts)
+    plays.append(misc_stuff_lmao)
 
     playbook = yaml.safe_dump(
         [play.to_dict() for play in plays],

@@ -1,16 +1,34 @@
-- name: Install Fonts
+- name: Install Tools
   hosts: localhost
-  become: true
   tasks:
-  - name: fetch jb-mono
-    ansible.builtin.get_url:
-      url: https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/JetBrainsMono.zip
-      dest: /tmp/JetBrainsMono.zip
-      owner: null
-      group: null
-  - name: unzip jb-mono
+  - name: Check if /home/kali/tools exists
+    ansible.builtin.stat:
+      path: /home/kali/tools
+    register: tools_stat
+  - name: Create /home/kali/tools
+    ansible.builtin.file:
+      path: /home/kali/tools
+      state: directory
+      owner: kali
+      group: kali
+    when: tools_stat.stat.exists == false
+  - name: Check if /home/kali/tools/standalone exists
+    ansible.builtin.stat:
+      path: /home/kali/tools/standalone
+    register: standalone_stat
+  - name: Create /home/kali/tools/standalone
+    ansible.builtin.file:
+      path: /home/kali/tools/standalone
+      state: directory
+      owner: kali
+      group: kali
+    when: standalone_stat.stat.exists == false
+  - name: pipx install tools
     ansible.builtin.shell:
-      cmd: unzip /tmp/JetBrainsMono.zip -d /usr/share/fonts/truetype/jb-mono
-  - name: fc-cache
-    ansible.builtin.shell:
-      cmd: fc-cache -fv
+      cmd: |-
+        for d in /home/kali/tools/*/; do
+            if [ -f "$d/setup.py" ] || [ -f "$d/pyproject.toml" ]; then
+                echo "Installing $d with pipx"
+                pipx install "$d"
+            fi
+        done
