@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
-from pathlib import Path
 
 import yaml
 
@@ -79,7 +78,7 @@ class Play:
         self,
         task_name: str,
         **kwargs: Any,
-    ):
+    ) -> "Play":
         return self.add_task(task_name, modules["systemd"], **kwargs)
 
     def create_directory(
@@ -139,10 +138,38 @@ class Play:
                 f"Clone {repo_name}",
                 repo,
                 dest,
+                owner=owner,
+                group=group,
                 register=register,
                 when=when,
             )
         return self
+
+    def copy(
+        self,
+        task_name: str,
+        src: str,
+        dest: str,
+        owner: Optional[str] = None,
+        group: Optional[str] = None,
+        mode: Optional[str] = None,
+        register: Optional[str] = None,
+        when: Optional[Condition] = None,
+    ) -> "Play":
+        args: Dict[str, Any] = {"src": src, "dest": dest}
+        if owner:
+            args["owner"] = owner
+        if group:
+            args["group"] = group
+        if mode:
+            args["mode"] = mode
+        return self.add_task(
+            task_name,
+            "ansible.builtin.copy",
+            register=register,
+            when=when,
+            **args,
+        )
 
     def wget(
         self,
@@ -154,15 +181,17 @@ class Play:
         register: Optional[str] = None,
         when: Optional[Condition] = None,
     ) -> "Play":
+        args: Dict[str, Any] = {"url": url, "dest": dest}
+        if owner:
+            args["owner"] = owner
+        if group:
+            args["group"] = group
         return self.add_task(
             task_name,
             "ansible.builtin.get_url",
-            url=url,
-            dest=dest,
-            owner=owner if owner else None,
-            group=group if group else None,
             register=register,
             when=when,
+            **args,
         )
 
     def sh(
@@ -195,15 +224,17 @@ class Play:
         for url in urls:
             file_name = url.split("/")[-1]
             dest = f"{base_dest}/{file_name}"
+            args: Dict[str, Any] = {"url": url, "dest": dest}
+            if owner:
+                args["owner"] = owner
+            if group:
+                args["group"] = group
             self.add_task(
                 f"Download {file_name}",
                 "ansible.builtin.get_url",
-                url=url,
-                dest=dest,
-                owner=owner if owner else None,
-                group=group if group else None,
                 register=register,
                 when=when,
+                **args,
             )
         return self
 
@@ -236,7 +267,8 @@ class Play:
         group: Optional[str] = None,
         mode: Optional[str] = None,
     ) -> "Play":
-        stat_var = f"{Path(path).name}_stat"
+        safe_name = Path(path).name.replace("-", "_")
+        stat_var = f"{safe_name}_stat"
 
         self.stat(f"Check if {path} exists", path, stat_var)
         self.create_directory(
