@@ -36,6 +36,7 @@ class Task:
     args: Dict[str, Any] = field(default_factory=lambda: {})
     register: Optional[str] = None
     when: Optional[Condition] = None
+    ignore_errors: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         d: Dict[str, Any] = {"name": self.name, self.module: self.args or {}}
@@ -43,6 +44,8 @@ class Task:
             d["register"] = self.register
         if self.when:
             d["when"] = self.when
+        if self.ignore_errors:
+            d["ignore_errors"] = True
         return d
 
 
@@ -59,10 +62,11 @@ class Play:
         module: str,
         register: Optional[str] = None,
         when: Optional[Condition] = None,
+        ignore_errors: bool = False,
         **args: Any,
     ) -> "Play":
         self.tasks.append(
-            Task(name=task_name, module=module, args=args, register=register, when=when)
+            Task(name=task_name, module=module, args=args, register=register, when=when, ignore_errors=ignore_errors)
         )
         return self
 
@@ -200,6 +204,7 @@ class Play:
         cmd: str,
         register: Optional[str] = None,
         when: Optional[str] = None,
+        ignore_errors: bool = False,
     ) -> "Play":
 
         cmd = cmd.strip()
@@ -210,6 +215,7 @@ class Play:
             cmd=cmd,
             register=register,
             when=when,
+            ignore_errors=ignore_errors,
         )
 
     def mass_wget(
@@ -249,16 +255,28 @@ class Play:
         when: Optional[Condition] = None,
         **kwargs: Any,
     ) -> "Play":
-        args = {"repo": repo, "dest": dest}
-        if owner:
-            args["owner"] = owner
-        if group:
-            args["group"] = group
+        args: Dict[str, Any] = {"repo": repo, "dest": dest}
         args.update(kwargs)
 
-        return self.add_task(
+        self.add_task(
             task_name, modules["git"], register=register, when=when, **args
         )
+
+        # ansible.builtin.git does not support owner/group — apply via file module
+        if owner or group:
+            chown_args: Dict[str, Any] = {"path": dest, "recurse": True}
+            if owner:
+                chown_args["owner"] = owner
+            if group:
+                chown_args["group"] = group
+            self.add_task(
+                f"Set ownership of {dest}",
+                modules["file"],
+                when=when,
+                **chown_args,
+            )
+
+        return self
 
     def ensure_directory(
         self,

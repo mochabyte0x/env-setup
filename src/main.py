@@ -28,11 +28,22 @@ if __name__ == "__main__":
 
     install_deps = (
         Play(name="Install (some) Dependencies", hosts="localhost", become=True)
+        .sh(
+            "Remove stale Microsoft apt repo (breaks apt update since Feb 2026)",
+            "rm -f /etc/apt/sources.list.d/microsoft-prod.list /etc/apt/sources.list.d/microsoft*.list /etc/apt/trusted.gpg.d/microsoft*.gpg /etc/apt/trusted.gpg.d/microsoft*.asc",
+        )
         .add_apt("install pipx", "pipx", update_cache="yes")
         .add_apt("remove python3-impacket", "python3-impacket", state="absent")
         .add_apt("remove impacket-scripts", "impacket-scripts", state="absent")
         .add_apt("install ntpdate", "ntpsec-ntpdate", update_cache="yes")
         .add_apt("install sshpass", "sshpass", update_cache="yes")
+        .add_apt("install curl and gpg for gh repo", "curl,gpg", update_cache="yes")
+        .sh(
+            "Add GitHub CLI apt repository",
+            """curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | gpg --dearmor -o /usr/share/keyrings/githubcli-archive-keyring.gpg
+chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list""",
+        )
         .add_apt("install gh", "gh", update_cache="yes")
     )
 
@@ -42,7 +53,6 @@ if __name__ == "__main__":
         "https://github.com/dirkjanm/BloodHound.py.git",
         "https://github.com/CravateRouge/bloodyAD.git",
         "https://github.com/gatariee/adidnsdump.git",
-        "https://github.com/gentilkiwi/mimikatz.git",
         "https://github.com/NH-RED-TEAM/RustHound.git",
         "https://github.com/g0h4n/RustHound-CE.git",
         "https://github.com/aniqfakhrul/powerview.py.git",
@@ -52,17 +62,17 @@ if __name__ == "__main__":
         "https://github.com/login-securite/DonPAPI.git",
         "https://github.com/micahvandeusen/gMSADumper.git",
         "https://github.com/franc-pentest/ldeep.git",
-        "https://github.com/trustedsec/Titanis.git",
         "https://github.com/Macmod/ldapx.git",
         "https://github.com/gatariee/minrm.git",
         "https://github.com/ShutdownRepo/pywhisker.git",
         "https://github.com/dirkjanm/PKINITtools.git",
         "https://github.com/Greenwolf/ntlm_theft.git",
         "https://github.com/dirkjanm/krbrelayx.git",
-        
     ]
     tools_transfer_git = [
         "https://github.com/Flangvik/SharpCollection.git",
+        "https://github.com/bugch3ck/SharpEfsPotato.git",
+        "https://github.com/gentilkiwi/mimikatz.git",
     ]
 
     # be careful with these!!
@@ -75,6 +85,7 @@ if __name__ == "__main__":
         "https://github.com/peass-ng/PEASS-ng/releases/download/20260501-5805575d/winPEASx64.exe",
         "https://github.com/nicocha30/ligolo-ng/releases/download/v0.8.3/ligolo-ng_agent_0.8.3_windows_amd64.zip",
         "https://github.com/nicocha30/ligolo-ng/releases/download/v0.8.3/ligolo-ng_proxy_0.8.3_linux_amd64.tar.gz",
+        "https://github.com/BeichenDream/GodPotato/releases/download/V1.20/GodPotato-NET4.exe",
     ]
 
     fetch_tools = (
@@ -135,7 +146,12 @@ if __name__ == "__main__":
     # Unzip the agent in the pivot directory defined in the tools_transfer_tooling_pivot_dir variable
     fetch_tools.sh(
         task_name="Unzip agent in pivot directory",
-        cmd=f"unzip {tools_transfer_tooling_pivot_dir}/ligolo-ng_agent_0.8.3_windows_amd64.zip -d {tools_transfer_tooling_pivot_dir}",
+        cmd=f"unzip -o {tools_transfer_tooling_pivot_dir}/ligolo-ng_agent_0.8.3_windows_amd64.zip -d {tools_transfer_tooling_pivot_dir}",
+    )
+
+    fetch_tools.sh(
+        task_name="Unzip SharpHound",
+        cmd=f"unzip -o {tools_transfer_tooling_dir}/SharpHound_v2.12.0_windows_x86.zip -d {tools_transfer_tooling_dir}/SharpHound",
     )
 
 
@@ -174,9 +190,7 @@ done
         )
         .wget(
             "Download VSCode Debian Package",
-            # grab latest with:
-            # curl 'https://update.code.visualstudio.com/latest/linux-deb-x64/stable'
-            "https://vscode.download.prss.microsoft.com/dbazure/download/stable/6f17636121051a53c88d3e605c491d22af2ba755/code_1.109.5-1771531656_amd64.deb",
+            "https://update.code.visualstudio.com/latest/linux-deb-x64/stable",
             dest="/tmp/code.deb",
             register="vscode_deb",
             when="vscode_stat.stat.exists == False and vscode_deb_stat.stat.exists == False",
@@ -184,6 +198,7 @@ done
         .sh(
             "Install VSCode",
             "dpkg -i /tmp/code.deb",
+            when="vscode_stat.stat.exists == false",
         )
     )
 
@@ -226,7 +241,7 @@ curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.l
     install_fonts = (
         Play(name="Install Fonts", hosts="localhost", become=True)
         .wget("fetch jb-mono", "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/JetBrainsMono.zip", dest="/tmp/JetBrainsMono.zip")
-        .sh("unzip jb-mono", "unzip /tmp/JetBrainsMono.zip -d /usr/share/fonts/truetype/jb-mono")
+        .sh("unzip jb-mono", "unzip -o /tmp/JetBrainsMono.zip -d /usr/share/fonts/truetype/jb-mono")
         .sh("fc-cache", "fc-cache -fv")
     )
 
@@ -241,44 +256,58 @@ curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.l
             group=wallpaper_user,
             mode="0755",
         )
-        .copy(
-            "Install wallpaper image from repo assets",
-            src="{{ playbook_dir }}/assets/23.jpg",
+        .wget(
+            "Download wallpaper image",
+            "https://raw.githubusercontent.com/mochabyte0x/env-setup/main/assets/23.jpg",
             dest=wallpaper_dest,
             owner=wallpaper_user,
             group=wallpaper_user,
-            mode="0644",
         )
         .sh(
-            "Apply wallpaper (GNOME / KDE Plasma / XFCE)",
-            f"""\
-uid=$(id -u {wallpaper_user})
-WP_FILE="{wallpaper_dest}"
-WP_URI="file://{wallpaper_dest}"
-run_as() {{ sudo -u {wallpaper_user} env "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$uid/bus" "$@"; }}
+            "Apply wallpaper (XFCE)",
+            "sudo -u " + wallpaper_user + " bash <<'BASH'\n"
+            "export DISPLAY=:0\n"
+            "export DBUS_SESSION_BUS_ADDRESS=\"unix:path=/run/user/$(id -u)/bus\"\n"
+            "export XDG_RUNTIME_DIR=\"/run/user/$(id -u)\"\n"
+            "WALLPAPER=" + wallpaper_dest + "\n"
+            "\n"
+            "# Find all existing last-image keys and update them\n"
+            "KEYS=$(xfconf-query -c xfce4-desktop -l 2>/dev/null | grep 'last-image')\n"
+            "if [ -n \"$KEYS\" ]; then\n"
+            "    for KEY in $KEYS; do\n"
+            "        xfconf-query -c xfce4-desktop -p \"$KEY\" -s \"$WALLPAPER\"\n"
+            "        echo \"Updated: $KEY\"\n"
+            "    done\n"
+            "else\n"
+            "    # No existing keys — detect monitor and create\n"
+            "    MON=$(xrandr --query 2>/dev/null | grep ' connected' | head -1 | awk '{print $1}')\n"
+            "    [ -z \"$MON\" ] && MON=\"Virtual-1\"\n"
+            "    KEY=\"/backdrop/screen0/monitor${MON}/workspace0/last-image\"\n"
+            "    xfconf-query -c xfce4-desktop -p \"$KEY\" -n -t string -s \"$WALLPAPER\"\n"
+            "    echo \"Created: $KEY\"\n"
+            "fi\n"
+            "\n"
+            "# Signal xfdesktop to reload and apply the new wallpaper\n"
+            "xfdesktop --reload 2>/dev/null || true\n"
+            "BASH\n",
+        )
+    )
 
-# GNOME
-if command -v gsettings >/dev/null 2>&1; then
-  run_as gsettings set org.gnome.desktop.background picture-uri "$WP_URI" || true
-  run_as gsettings set org.gnome.desktop.background picture-uri-dark "$WP_URI" || true
-fi
+    # mono-complete ships mcs + msbuild + .NET 4.x reference assemblies
+    # msbuild can target net47 via /p:TargetFrameworkVersion=v4.7
+    install_dotnet_compiler = (
+        Play(name="Install Mono (.NET 4.7 cross-compiler)", hosts="localhost", become=True)
+        .add_apt("install mono-complete", "mono-complete", update_cache="yes")
+    )
 
-# KDE Plasma 
-if command -v plasma-apply-wallpaperimage >/dev/null 2>&1; then
-  run_as plasma-apply-wallpaperimage "$WP_FILE" || true
-fi
-
-# XFCE
-if command -v xfconf-query >/dev/null 2>&1; then
-  run_as bash -c 'WP_FILE="$1"; for prop in $(xfconf-query -c xfce4-desktop -l 2>/dev/null | grep last-image || true); do
-    if xfconf-query -c xfce4-desktop -p "$prop" >/dev/null 2>&1; then
-      xfconf-query -c xfce4-desktop -p "$prop" -s "$WP_FILE" || true
-    else
-      xfconf-query -c xfce4-desktop -p "$prop" -n -t string -s "$WP_FILE" || true
-    fi
-  done' bash "$WP_FILE"
-fi
-""",
+    sharp_collection_net47 = f"{tools_transfer_tooling_dir}/SharpCollection/NetFramework_4.7_Any"
+    build_csharp_tools = (
+        Play(name="Build C# tools (net47)", hosts="localhost", become=False)
+        .sh(
+            "Build SharpEfsPotato",
+            f"""cd {tools_transfer_tooling_dir}/SharpEfsPotato
+/usr/bin/xbuild SharpEfsPotato/SharpEfsPotato.csproj /p:TargetFrameworkVersion=v4.7 /p:Configuration=Release
+cp SharpEfsPotato/bin/Release/SharpEfsPotato.exe {sharp_collection_net47}/SharpEfsPotato.exe""",
         )
     )
 
@@ -367,8 +396,18 @@ PY
         )
     )
 
+    cleanup = (
+        Play(name="Cleanup archives", hosts="localhost", become=False)
+        .sh(
+            "Remove downloaded archives",
+            f"find {tools_transfer_tooling_dir} -maxdepth 1 \\( -name '*.zip' -o -name '*.tar.gz' -o -name '*.tar' \\) -delete",
+        )
+    )
+
     plays.append(install_deps)
+    plays.append(install_dotnet_compiler)
     plays.append(fetch_tools)
+    plays.append(build_csharp_tools)
     plays.append(install_tools)
     plays.append(install_zsh_omz)
     plays.append(install_vscode)
@@ -378,6 +417,7 @@ PY
     plays.append(install_wallpaper)
     plays.append(configure_qterminal)
     plays.append(misc_stuff_lmao)
+    plays.append(cleanup)
 
     playbook = yaml.safe_dump(
         [play.to_dict() for play in plays],
