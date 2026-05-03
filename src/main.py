@@ -106,6 +106,16 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githu
         tools_transfer_git,
         owner="mocha",
         group="mocha",
+    ).mass_clone(
+        tools_transfer_dir,
+        ["https://github.com/t3l3machus/wwwtree.git"],
+        owner="mocha",
+        group="mocha",
+    ).mass_clone(
+        f"{tools_dir}/password_mutation",
+        ["https://github.com/t3l3machus/psudohash.git"],
+        owner="mocha",
+        group="mocha",
     ).mass_wget(
         tools_transfer_tooling_dir,
         tools_standalone,
@@ -311,6 +321,16 @@ cp SharpEfsPotato/bin/Release/SharpEfsPotato.exe {sharp_collection_net47}/SharpE
         )
     )
 
+    install_seclists = (
+        Play(name="Clone SecLists", hosts="localhost", become=True)
+        .stat("Check if SecLists exists", "/usr/share/wordlists/SecLists", "seclists_stat")
+        .sh(
+            "Clone SecLists",
+            "git clone --depth=1 https://github.com/danielmiessler/SecLists.git /usr/share/wordlists/SecLists",
+            when="seclists_stat.stat.exists == false",
+        )
+    )
+
     misc_stuff_lmao = (
         Play(name="Misc Stuff", hosts="localhost", become=True)
         .stat("Check if rockyou is gz'ed", "/usr/share/wordlists/rockyou.txt.gz", "rockyou_stat")
@@ -402,6 +422,10 @@ PY
             "Remove downloaded archives",
             f"find {tools_transfer_tooling_dir} -maxdepth 1 \\( -name '*.zip' -o -name '*.tar.gz' -o -name '*.tar' \\) -delete",
         )
+        .sh(
+            "Remove pivot archives",
+            f"find {tools_pivot_dir} -maxdepth 1 \\( -name '*.tar.gz' -o -name '*.tar' \\) -delete",
+        )
     )
 
     plays.append(install_deps)
@@ -416,6 +440,7 @@ PY
     plays.append(install_fonts)
     plays.append(install_wallpaper)
     plays.append(configure_qterminal)
+    plays.append(install_seclists)
     plays.append(misc_stuff_lmao)
     plays.append(cleanup)
 
