@@ -188,6 +188,10 @@ done
             task_name="pipx install impacket",
             cmd="pipx install impacket",
         )
+        .sh(
+            task_name="pipx ensurepath (add ~/.local/bin to PATH)",
+            cmd="pipx ensurepath",
+        )
     )
 
     install_vscode = (
