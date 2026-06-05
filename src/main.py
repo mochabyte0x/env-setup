@@ -299,6 +299,30 @@ curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.l
         .add_apt("install wg-tools", "wireguard-tools", update_cache="yes")
     )
 
+    # xrdp on a non-default port (3390) to avoid clashing with port-forwarded
+    # Windows RDP sessions when pivoting.
+    install_xrdp = (
+        Play(name="Install xrdp (RDP server on 3390)", hosts="localhost", become=True)
+        .add_apt("install xorg", "xorg", update_cache="yes")
+        .add_apt("install xrdp", "xrdp", update_cache="yes")
+        .add_apt("install xorgxrdp", "xorgxrdp", update_cache="yes")
+        .add_task(
+            "Set xrdp port to 3390",
+            "ansible.builtin.lineinfile",
+            path="/etc/xrdp/xrdp.ini",
+            regexp="^port=",
+            line="port=3390",
+            backrefs=False,
+        )
+        .systemd_service(
+            task_name="Enable and start xrdp",
+            name="xrdp",
+            state="restarted",
+            enabled=True,
+            daemon_reload=True,
+        )
+    )
+
     install_fonts = (
         Play(name="Install Fonts", hosts="localhost", become=True)
         .wget("fetch jb-mono", "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/JetBrainsMono.zip", dest="/tmp/JetBrainsMono.zip")
@@ -490,6 +514,7 @@ PY
     plays.append(install_vscode)
     plays.append(install_tailscale)
     plays.append(install_wireguard)
+    plays.append(install_xrdp)
     plays.append(install_fonts)
     plays.append(install_wallpaper)
     plays.append(configure_qterminal)
