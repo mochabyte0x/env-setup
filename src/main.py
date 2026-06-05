@@ -37,6 +37,8 @@ if __name__ == "__main__":
         .add_apt("remove impacket-scripts", "impacket-scripts", state="absent")
         .add_apt("install ntpdate", "ntpsec-ntpdate", update_cache="yes")
         .add_apt("install sshpass", "sshpass", update_cache="yes")
+        .add_apt("install MIT kerberos client (kinit, kvno, klist, ...)", "krb5-user", update_cache="yes")
+        .add_apt("install MIT kerberos dev headers", "libkrb5-dev", update_cache="yes")
         .add_apt("install curl and gpg for gh repo", "curl,gpg", update_cache="yes")
         .sh(
             "Add GitHub CLI apt repository",
@@ -193,6 +195,49 @@ BASH
         .sh(
             task_name="pipx ensurepath (as mocha, add ~/.local/bin to PATH)",
             cmd="sudo -u mocha -H pipx ensurepath",
+        )
+    )
+
+    install_golang = (
+        Play(name="Install Golang", hosts="localhost", become=True)
+        .add_apt("install golang-go", "golang-go", update_cache="yes")
+    )
+
+    # pdtm = ProjectDiscovery Tool Manager. Installs to $HOME/.pdtm/go/bin.
+    # 'go install' itself drops the pdtm binary in $HOME/go/bin.
+    pdtm_user = "mocha"
+    install_pdtm = (
+        Play(name="Install pdtm (ProjectDiscovery Tool Manager)", hosts="localhost", become=False)
+        .sh(
+            task_name="go install pdtm (as mocha)",
+            cmd=f"sudo -u {pdtm_user} -H bash -lc 'go install -v github.com/projectdiscovery/pdtm/cmd/pdtm@latest'",
+        )
+        .sh(
+            task_name="Add go + pdtm bin dirs to mocha's shell rc files",
+            cmd=f"""sudo -u {pdtm_user} -H bash <<'BASH'
+set -e
+MARKER='# >>> pdtm / go paths >>>'
+LINE='export PATH="$PATH:$HOME/go/bin:$HOME/.pdtm/go/bin"'
+for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
+    [ -f "$rc" ] || continue
+    if ! grep -qF "$MARKER" "$rc"; then
+        {{
+            echo ''
+            echo "$MARKER"
+            echo "$LINE"
+            echo '# <<< pdtm / go paths <<<'
+        }} >> "$rc"
+        echo "Appended pdtm/go PATH block to $rc"
+    else
+        echo "pdtm/go PATH block already present in $rc"
+    fi
+done
+BASH
+""",
+        )
+        .sh(
+            task_name="pdtm install nuclei, subfinder, katana (as mocha)",
+            cmd=f"sudo -u {pdtm_user} -H bash -lc 'export PATH=\"$PATH:$HOME/go/bin:$HOME/.pdtm/go/bin\" && pdtm -i nuclei,subfinder,katana'",
         )
     )
 
@@ -440,6 +485,8 @@ PY
     plays.append(build_csharp_tools)
     plays.append(install_tools)
     plays.append(install_zsh_omz)
+    plays.append(install_golang)
+    plays.append(install_pdtm)
     plays.append(install_vscode)
     plays.append(install_tailscale)
     plays.append(install_wireguard)
