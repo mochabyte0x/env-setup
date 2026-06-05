@@ -172,25 +172,27 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githu
         .ensure_directory(tools_transfer_tooling_dir, owner="mocha", group="mocha")
         .ensure_directory(tools_transfer_tooling_pivot_dir, owner="mocha", group="mocha")
         .sh(
-            task_name="pipx install tools",
-            cmd=f"""
+            task_name="pipx install tools (as mocha)",
+            cmd=f"""sudo -u mocha -H bash <<'BASH'
+set -e
 for category in {tools_dir}/*/; do
     for d in "$category"*/; do
         if [ -f "$d/setup.py" ] || [ -f "$d/pyproject.toml" ]; then
             echo "Installing $d with pipx"
-            pipx install "$d"
+            pipx install "$d" || echo "WARN: pipx install failed for $d"
         fi
     done
 done
+BASH
 """
         )
         .sh(
-            task_name="pipx install impacket",
-            cmd="pipx install impacket",
+            task_name="pipx install impacket (as mocha)",
+            cmd="sudo -u mocha -H pipx install impacket",
         )
         .sh(
-            task_name="pipx ensurepath (add ~/.local/bin to PATH)",
-            cmd="pipx ensurepath",
+            task_name="pipx ensurepath (as mocha, add ~/.local/bin to PATH)",
+            cmd="sudo -u mocha -H pipx ensurepath",
         )
     )
 
